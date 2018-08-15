@@ -1,4 +1,4 @@
-![WebGL Biot Savart Simulation](/master/assets/sample.gif)
+![WebGL Biot Savart Simulation](https://raw.githubusercontent.com/Marcel-G/webgl-particle-simulation/master/assets/sample.gif)
 
 # GPU particle simulation
 
@@ -17,5 +17,4 @@ To build from source for development:
 3. Run `npm run dev`.
 
 ## References
-
 - [A GPU Approach to Particle Physics - Chris Wellons](https://nullprogram.com/blog/2014/06/29/)
