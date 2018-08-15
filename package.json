@@ -1,0 +1,68 @@
+{
+  "private": true,
+  "name": "webgl-particle-simulation",
+  "version": "0.1.0",
+  "main": "./bundle/bundle.js",
+  "scripts": {
+    "clean": "rimraf bundle",
+    "prebuild": "npm run clean",
+    "ccapture": "mkdir -p bundle && cp node_modules/ccapture.js/build/CCapture.all.min.js bundle/ccapture.js && cp node_modules/ccapture.js/src/gif.worker.js bundle/gif.worker.js",
+    "prebuild:watch": "npm run clean && npm run ccapture",
+    "build": "NODE_ENV=production webpack",
+    "build:watch": "NODE_ENV=development webpack --progress --watch",
+    "lint:js": "eslint .",
+    "lint:js:fix": "npm run lint:js -- --fix",
+    "start": "http-server bundle -o",
+    "dev": "npm run build:watch & npm run start",
+    "predeploy": "npm run build",
+    "deploy": "git subtree push --prefix bundle origin gh-pages"
+  },
+  "dependencies": {
+    "babel-runtime": "^6.18.0",
+    "ccapture.js": "^1.1.0",
+    "dom4": "^2.1.3",
+    "igloo-ext": "^0.1.6",
+    "svgxuse": "^1.1.23",
+    "whatwg-fetch": "^2.0.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.18.2",
+    "babel-eslint": "^8.2.6",
+    "babel-loader": "^7.1.5",
+    "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-preset-es2015": "^6.18.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "css-loader": "^1.0.0",
+    "eslint": "^5.3.0",
+    "eslint-config-barebones": "^0.1.3",
+    "exports-loader": "^0.7.0",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "file-loader": "^1.1.11",
+    "glslify-loader": "^1.0.2",
+    "html-webpack-plugin": "^3.2.0",
+    "http-server": "^0.11.1",
+    "imports-loader": "^0.8.0",
+    "raw-loader": "^0.5.1",
+    "rimraf": "^2.6.2",
+    "style-loader": "^0.22.1",
+    "webpack": "^4.16.5",
+    "webpack-cli": "^3.1.0"
+  },
+  "babel": {
+    "presets": [
+      "es2015",
+      "stage-0"
+    ],
+    "plugins": [
+      "transform-runtime"
+    ]
+  },
+  "eslintConfig": {
+    "parser": "babel-eslint",
+    "extends": "barebones",
+    "globals": {
+      "fetch": false,
+      "requestAnimationFrame": false
+    }
+  }
+}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Webpack App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * { margin:0; padding:0 }
+      html, body { width:100%; height:100% }
+      canvas { display:block; background-color: black; }
+      button { display:block; margin: 1em 0;}
+    </style>
+  </head>
+  <body>
+    <div style="height: 100vh; width: 100vw; justify-content: center; display: flex; align-items: center;">
+      <div style="display: flex; flex-direction: row;">
+      <canvas height="480" width="480"></canvas>
+        <div style="padding: 2em;">
+          <h1>Particle Simulation</h1>
+          <p>
+            <h2>Simulation</h2>
+            <ul id="simSettings"></ul><br/>
+            <button id="startSimulation">Start Simulation</button>
+            <button id="stopSimulation">Stop Simulation</button>
+          </p>
+          <p>
+            <h2>Capture</h2>
+            <button id="captureButton">Start Capture</button>
+            <button id="stopCaptureButton">Stop Capture</button>
+            <input type="radio" name="encoder" value="webm" checked="checked" >WebM</input>
+            <input type="radio" name="encoder" value="gif" >GIF</input>
+          </p>
+        </div>
+      </div>
+    </div>
+  <script src="ccapture.js"></script>
+  <script type="text/javascript">
+
+    let demo = null
+    let canvas = null
+    let capturer = null
+
+    const simSettings = {
+        stateSize: 60
+      }
+
+    const startCapture = () => {
+      capturer = new CCapture({
+        format: document.querySelector('input[name="encoder"]:checked').value,
+        framerate: 60,
+        workersPath: '/'
+      })
+      capturer.start()
+      demo.afterRender = captureFrame
+    }
+
+    const captureFrame = () => {
+      capturer.capture(canvas)
+    }
+
+    const finishCapture = () => {
+      capturer.stop()
+      capturer.save()
+    }
+
+    const startSimulation = () => {
+      demo.start()
+    }
+
+    const stopSimulation = () => {
+      demo.clearInstance()
+    }
+
+    document.getElementById('startSimulation').addEventListener('click', startSimulation)
+    document.getElementById('stopSimulation').addEventListener('click', stopSimulation)
+    document.getElementById('captureButton').addEventListener('click', startCapture)
+    document.getElementById('stopCaptureButton').addEventListener('click', finishCapture)
+
+    const simSettingElement = document.getElementById('simSettings')
+
+    window.addEventListener('load', () => {
+      canvas = document.querySelector('canvas')
+      Object.entries(simSettings).forEach(([key, value]) => {
+        const item = document.createElement('li')
+        item.innerHTML = key + ' : ' + value
+        simSettingElement.appendChild(item)
+      })
+      demo = new ParticleField(canvas, simSettings)
+    })
+    </script>
+  </body>
+</html>
