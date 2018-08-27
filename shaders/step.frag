@@ -5,9 +5,7 @@ uniform sampler2D velocities;
 uniform sampler2D weights;
 uniform int derivative;
 uniform vec2 scale;
-uniform vec2 gravity;
-uniform vec2 wind;
-uniform float restitution;
+uniform float frameInterval;
 uniform vec2 worldsize;
 uniform vec2 statesize;
 varying vec2 index;
@@ -29,7 +27,7 @@ vec2 encode(float value, float scale) {
 }
 
 void updatePosition(inout vec2 p, inout vec2 v) {
-  p += v * 3.0;
+  p += v * 0.3 * frameInterval;
 }
 
 void updateVelocity(inout vec2 p, inout vec2 v) {
@@ -43,9 +41,10 @@ void updateVelocity(inout vec2 p, inout vec2 v) {
 
       float pointDistance = abs(distance(p, pv));
 
+      if (pointDistance > worldsize.x / 4.0) continue;
+
       if (
         pv != p // don't apply force to self
-        // pointDistance < worldsize.x / 4.0 // ignore points more than 1/4 screen width away
       ) {
         vec4 wsample = texture2D(weights, cindex);
         float w = decode(wsample.xy, scale.y);

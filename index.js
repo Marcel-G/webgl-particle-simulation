@@ -23,25 +23,17 @@ class ParticleField {
     return (((pair[0] / 255) * b + (pair[1] / 255) * b * b) - b * b / 2) / scale
   }
 
-  setWorldDimensions = () => {
-    var devicePixelRatio = window.devicePixelRatio || 1
-    var w = Math.floor(this.igloo.canvas.offsetWidth * devicePixelRatio)
-    var h = Math.floor(this.igloo.canvas.offsetHeight * devicePixelRatio)
-    if (this.igloo.canvas.width !== w || this.igloo.canvas.height !== h) {
-      this.igloo.canvas.width = w
-      this.igloo.canvas.height = h
-    }
-    this.worldsize = new Float32Array([this.igloo.canvas.width, this.igloo.canvas.height])
-  }
-
   constructor (canvas, options) {
     const igloo = this.igloo = new Igloo(canvas)
     const gl = igloo.gl
     this.options = {
       stateSize: 10,
       color: [1, 1, 1, 1],
+      fps: 60,
       ...options
     }
+
+    this.fpsInterval = 1000 / this.options.fps
 
     this.setWorldDimensions()
 
@@ -88,7 +80,16 @@ class ParticleField {
     }
     this.setCount(Math.pow(this.options.stateSize, 2), true)
   }
-
+  setWorldDimensions = () => {
+    var devicePixelRatio = window.devicePixelRatio || 1
+    var w = Math.floor(this.igloo.canvas.offsetWidth * devicePixelRatio)
+    var h = Math.floor(this.igloo.canvas.offsetHeight * devicePixelRatio)
+    if (this.igloo.canvas.width !== w || this.igloo.canvas.height !== h) {
+      this.igloo.canvas.width = w
+      this.igloo.canvas.height = h
+    }
+    this.worldsize = new Float32Array([this.igloo.canvas.width, this.igloo.canvas.height])
+  }
   setCount (n) {
     const tw = Math.ceil(Math.sqrt(n))
     const th = Math.floor(Math.sqrt(n))
@@ -196,7 +197,7 @@ class ParticleField {
       .uniform('statesize', this.statesize)
   }
 
-  step () {
+  step (frameInterval) {
     const igloo = this.igloo
     const gl = igloo.gl
 
@@ -206,6 +207,7 @@ class ParticleField {
       .uniform('scale', this.scale)
       .uniform('worldsize', this.worldsize)
       .uniform('randomSeed', [Math.random(), Math.random()])
+      .uniform('frameInterval', frameInterval)
       .attrib('quad', this.buffers.quad, 2)
 
     // update velocities
@@ -257,18 +259,25 @@ class ParticleField {
     gl.disable(gl.BLEND)
     return this
   }
-  frame () {
-    window.requestAnimationFrame(() => {
+  frame (newtime) {
+    const now = newtime
+    const elapsed = now - this.lastFrameTime
+
+    if (elapsed > this.fpsInterval) {
+      this.lastFrameTime = now - (elapsed % this.fpsInterval)
+
       if (this.running && !document.hidden) {
-        this.step().draw().frame()
-        this.afterRender && this.afterRender()
+        this.step(elapsed).draw()
       }
-    })
+    }
+
+    window.requestAnimationFrame(this.frame.bind(this))
     return this
   }
   start () {
     if (!this.running) {
       this.running = true
+      this.lastFrameTime = window.performance.now()
       this.init()
       this.frame()
     }
