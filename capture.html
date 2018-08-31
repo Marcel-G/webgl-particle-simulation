@@ -14,7 +14,7 @@
   <body>
     <div style="height: 100vh; width: 100vw; justify-content: center; display: flex; align-items: center;">
       <div style="display: flex; flex-direction: row;">
-      <canvas height="480" width="480"></canvas>
+      <canvas height="1080" width="1080"></canvas>
         <div style="padding: 2em;">
           <h1>Particle Simulation</h1>
           <p>
@@ -25,10 +25,13 @@
           </p>
           <p>
             <h2>Capture</h2>
-            <button id="captureButton">Start Capture</button>
-            <button id="stopCaptureButton">Stop Capture</button>
             <input type="radio" name="encoder" value="webm" checked="checked" >WebM</input>
             <input type="radio" name="encoder" value="gif" >GIF</input>
+            <button id="captureButton">Start Capture</button>
+            <button id="stopCaptureButton">Stop Capture</button>
+          </p>
+          <p>
+            <button id="startCapture1m">1 Minute Capture</button>
           </p>
         </div>
       </div>
@@ -40,27 +43,43 @@
     let canvas = null
     let capturer = null
 
+    const recordingLength = 60 // 60 seconds
+
     const simSettings = {
-        stateSize: 60
+        stateSize: 60,
+        fps: 60,
+        pauseOnHidden: false
       }
 
-    const startCapture = () => {
+    const startCapture1m = () => {
+      startSimulation()
+      startCapture(true)
+    }
+
+    const startCapture = (limit) => {
       capturer = new CCapture({
         format: document.querySelector('input[name="encoder"]:checked').value,
-        framerate: 60,
+        framerate: simSettings.fps,
         workersPath: '/'
       })
       capturer.start()
+      capturer.currentFrame = limit ? 0 : -1
       demo.afterRender = captureFrame
     }
 
     const captureFrame = () => {
+      if (capturer.currentFrame >= 0) capturer.currentFrame++
       capturer.capture(canvas)
+      if (capturer.currentFrame > simSettings.fps * recordingLength) {
+        console.log('recording max length reached')
+        finishCapture()
+      }
     }
 
     const finishCapture = () => {
       capturer.stop()
       capturer.save()
+      demo.afterRender = null
     }
 
     const startSimulation = () => {
@@ -75,6 +94,7 @@
     document.getElementById('stopSimulation').addEventListener('click', stopSimulation)
     document.getElementById('captureButton').addEventListener('click', startCapture)
     document.getElementById('stopCaptureButton').addEventListener('click', finishCapture)
+    document.getElementById('startCapture1m').addEventListener('click', startCapture1m)
 
     const simSettingElement = document.getElementById('simSettings')
 

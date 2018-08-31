@@ -1,9 +1,9 @@
 const path = require('path')
-const webpack = require('webpack')
 
 const isDev = process.env.NODE_ENV === 'development'
 
 let HtmlWebpackPlugin
+
 if (isDev) {
   HtmlWebpackPlugin = require('html-webpack-plugin')
 }

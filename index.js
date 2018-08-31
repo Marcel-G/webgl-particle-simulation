@@ -1,10 +1,10 @@
 import Igloo from './lib/igloo'
 
-import quadV from './shaders/quad.vert'
-import stepF from './shaders/step.frag'
+import stepMainV from './shaders/step/main.vert'
+import stepMainF from './shaders/step/main.frag'
 
-import drawV from './shaders/draw.vert'
-import drawF from './shaders/draw.frag'
+import drawMainV from './shaders/draw/main.vert'
+import drawMainF from './shaders/draw/main.frag'
 
 class ParticleField {
   static BASE = 255
@@ -30,6 +30,7 @@ class ParticleField {
       stateSize: 10,
       color: [1, 1, 1, 1],
       fps: 60,
+      pauseOnHidden: true,
       ...options
     }
 
@@ -59,9 +60,11 @@ class ParticleField {
       point: igloo.array(new Float32Array([0, 0]))
     }
 
+    console.log(stepMainF)
+
     this.programs = {
-      step: igloo.program(quadV, stepF),
-      draw: igloo.program(drawV, drawF)
+      step: igloo.program(stepMainV, stepMainF),
+      draw: igloo.program(drawMainV, drawMainF)
     }
 
     const texture = () => {
@@ -262,15 +265,18 @@ class ParticleField {
   frame (newtime) {
     const now = newtime
     const elapsed = now - this.lastFrameTime
-
     if (elapsed > this.fpsInterval) {
       this.lastFrameTime = now - (elapsed % this.fpsInterval)
 
-      if (this.running && !document.hidden) {
+      if (
+        this.running &&
+        (this.options.pauseOnHidden ? !document.hidden : true)
+      ) {
         this.step(elapsed).draw()
       }
     }
 
+    this.afterRender && this.afterRender()
     window.requestAnimationFrame(this.frame.bind(this))
     return this
   }

@@ -10,7 +10,7 @@ highp float rand( vec2 p ) {
     23.14069263277926, // e^pi (Gelfond's constant)
     2.665144142690225 // 2^sqrt(2) (Gelfondâ€“Schneider constant)
   );
-  return fract( cos( dot(p,K1) ) * 12345.6789 );
+  return fract(cos( dot(p,K1) ) * 12345.6789 );
 }
 
 void main() {
