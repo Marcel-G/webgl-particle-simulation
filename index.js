@@ -60,8 +60,6 @@ class ParticleField {
       point: igloo.array(new Float32Array([0, 0]))
     }
 
-    console.log(stepMainF)
-
     this.programs = {
       step: igloo.program(stepMainV, stepMainF),
       draw: igloo.program(drawMainV, drawMainF)

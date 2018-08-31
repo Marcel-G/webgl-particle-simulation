@@ -4,31 +4,50 @@ precision highp float;
 
 uniform sampler2D positions;
 uniform sampler2D velocities;
+uniform sampler2D weights;
 uniform int derivative;
 uniform vec2 scale;
 varying vec2 index;
 varying vec2 random;
 
-#pragma glslify: encode = require('../utils/encode')
-#pragma glslify: decode = require('../utils/decode')
+const float BASE = 255.0;
+const float OFFSET = BASE * BASE / 2.0;
+
+#pragma glslify: encode = require('../utils/encode', BASE=BASE, OFFSET=OFFSET)
+#pragma glslify: decode = require('../utils/decode', BASE=BASE, OFFSET=OFFSET)
+
+vec2 decodeAt(vec2 atIndex, sampler2D sample, float s) {
+  vec4 texture = texture2D(positions, atIndex);
+  return vec2(decode(texture.rg, s), decode(texture.ba, s));
+}
+
+vec2 getPositionAt(vec2 atIndex) {
+  return decodeAt(atIndex, positions, scale.x);
+}
+
+vec2 getVelocityAt(vec2 atIndex) {
+  return decodeAt(atIndex, velocities, scale.y);
+}
+
+float getWeightAt(vec2 atIndex) {
+  return decodeAt(atIndex, weights, scale.y).x;
+}
 
 #pragma glslify: updatePosition = require('./modules/biotSavart/updatePosition')
-#pragma glslify: updateVelocity = require('./modules/biotSavart/updateVelocity',positions=positions, MAX_STATE_SIZE=MAX_STATE_SIZE, scale=scale)
+#pragma glslify: updateVelocity = require('./modules/biotSavart/updateVelocity', getPositionAt=getPositionAt, getWeightAt=getWeightAt, MAX_STATE_SIZE=MAX_STATE_SIZE)
 
 void main() {
-  vec4 psample = texture2D(positions, index);
-  vec4 vsample = texture2D(velocities, index);
-  vec2 p = vec2(decode(psample.rg, scale.x), decode(psample.ba, scale.x));
-  vec2 v = vec2(decode(vsample.rg, scale.y), decode(vsample.ba, scale.y));
+  vec2 currentPosition = getPositionAt(index);
+  vec2 currentVelocity = getVelocityAt(index);
   vec2 result;
   float s;
   if (derivative == 0) {
-    updateVelocity(p, v);
-    result = v;
+    updateVelocity(currentPosition, currentVelocity);
+    result = currentVelocity;
     s = scale.y;
   } else {
-    updatePosition(p, v);
-    result = p;
+    updatePosition(currentPosition, currentVelocity);
+    result = currentPosition;
     s = scale.x;
   }
   gl_FragColor = vec4(encode(result.x, s), encode(result.y, s));

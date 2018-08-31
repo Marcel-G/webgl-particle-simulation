@@ -11,7 +11,10 @@ uniform vec2 scale;
 varying vec2 velocity;
 varying float weight;
 
-#pragma glslify: decode = require('../utils/decode')
+const float BASE = 255.0;
+const float OFFSET = BASE * BASE / 2.0;
+
+#pragma glslify: decode = require('../utils/decode', BASE=BASE, OFFSET=OFFSET)
 
 void main() {
     vec4 psample = texture2D(positions, index / (statesize - 1.0));
