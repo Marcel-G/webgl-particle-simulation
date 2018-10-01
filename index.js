@@ -111,7 +111,7 @@ class ParticleField {
       for (var x = 0; x < tw; x++) {
         const i = y * tw * 4 + x * 4
         // calculate random position on outer circle boundry
-        const radius = Math.max(w, h) / 2 + Math.random() * 100
+        const radius = Math.max(w, h) / 10 + Math.random() * 100
         const angle = Math.random() * 360 / Math.PI
         const px = ParticleField.encode(radius * Math.cos(angle) + (w / 2), s[0])
         const py = ParticleField.encode(radius * Math.sin(angle) + (h / 2), s[0])
@@ -203,11 +203,9 @@ class ParticleField {
     const gl = igloo.gl
 
     gl.viewport(0, 0, this.statesize[0], this.statesize[1])
-
     this.programs.step.use()
       .uniform('scale', this.scale)
       .uniform('worldsize', this.worldsize)
-      .uniform('randomSeed', [Math.random(), Math.random()])
       .uniform('frameInterval', frameInterval)
       .attrib('quad', this.buffers.quad, 2)
 
@@ -273,7 +271,6 @@ class ParticleField {
         this.step(elapsed).draw()
       }
     }
-
     this.afterRender && this.afterRender()
     window.requestAnimationFrame(this.frame.bind(this))
     return this
