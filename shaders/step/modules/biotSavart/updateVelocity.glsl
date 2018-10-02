@@ -1,7 +1,7 @@
 #define M_PI 3.1415926535897932384626433832795
 
-#pragma glslify: getPositionAt = require('../../../utils/decodeAt', SAMPLE=positions, GETSCALE=scalex)
-#pragma glslify: getWeightAt = require('../../../utils/decodeAt', SAMPLE=weights, GETSCALE=scalex)
+// #pragma glslify: getPositionAt = require('../../../utils/decodeAt', SAMPLE=positions, GETSCALE=scalex)
+// #pragma glslify: getWeightAt = require('../../../utils/decodeAt', SAMPLE=weights, GETSCALE=scalex)
 
 
 vec2 calculateBackgroundForce(vec2 currentPosition) {
@@ -17,14 +17,14 @@ vec2 calculateBiotForce(vec2 currentPosition) {
   for (int vortx = 0; vortx < MAX_STATE_SIZE; vortx++) {
     for (int vorty = 0; vorty < MAX_STATE_SIZE; vorty++) {
       vec2 referenceIndex = vec2(vortx, vorty) / statesize.x; // set denominator to static 10 for glitchy effect
-      vec2 referencePosition = vec2(0.0);
+      vec2 referencePosition = getPositionAt(referenceIndex);
 
       float pointDistance = abs(distance(currentPosition, referencePosition));
 
       if (pointDistance > worldsize.x / 4.0) continue;
 
       if (referencePosition != currentPosition) { // don't apply force to self
-        float weight = 0.0;
+        float weight = getWeightAt(referenceIndex).x;
         for (int x = -1; x <= 1; x++) {
           for (int y = -1; y <= 1; y++) {
             float dx = referencePosition.x - (currentPosition.x +  worldsize.x * float(x));
