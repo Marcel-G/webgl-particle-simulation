@@ -1,6 +1,6 @@
 precision highp float;
 
-#define MAX_STATE_SIZE 100
+#define MAX_STATE_SIZE 50
 
 uniform sampler2D positions;
 uniform sampler2D velocities;

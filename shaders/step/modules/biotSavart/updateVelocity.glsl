@@ -1,9 +1,5 @@
 #define M_PI 3.1415926535897932384626433832795
 
-// #pragma glslify: getPositionAt = require('../../../utils/decodeAt', SAMPLE=positions, GETSCALE=scalex)
-// #pragma glslify: getWeightAt = require('../../../utils/decodeAt', SAMPLE=weights, GETSCALE=scalex)
-
-
 vec2 calculateBackgroundForce(vec2 currentPosition) {
   vec2 center = worldsize / 2.0;
   float distanceFromCenter = distance(currentPosition, center) / max(worldsize.x, worldsize.y);
@@ -15,7 +11,11 @@ vec2 calculateBiotForce(vec2 currentPosition) {
   vec2 nv = vec2(0.0, 0.0);
 
   for (int vortx = 0; vortx < MAX_STATE_SIZE; vortx++) {
+    if (vortx >= int(statesize.x)){ break; }
+
     for (int vorty = 0; vorty < MAX_STATE_SIZE; vorty++) {
+      if (vorty >= int(statesize.y)){ break; }
+
       vec2 referenceIndex = vec2(vortx, vorty) / statesize.x; // set denominator to static 10 for glitchy effect
       vec2 referencePosition = getPositionAt(referenceIndex);
 
@@ -35,20 +35,18 @@ vec2 calculateBiotForce(vec2 currentPosition) {
           }
         }
       }
-      if (vorty >= int(statesize.y)){ break; }
     }
-    if (vortx >= int(statesize.x)){ break; }
   }
 
   return nv / (statesize.x * statesize.y);
 }
 
 void updateVelocity(vec2 currentPosition, inout vec2 currentVelocity) {
-  vec2 biotForce = 0.5 * calculateBiotForce(currentPosition);
-  vec2 inertia = 0.1 * currentVelocity;
-  vec2 radialForce = 0.4 * calculateBackgroundForce(currentPosition);
+  vec2 inertia = 0.9 * currentVelocity;
+  vec2 radialForce = 15.0 * calculateBackgroundForce(currentPosition);
+  vec2 biotForce = calculateBiotForce(currentPosition);
 
-  currentVelocity = min(inertia + radialForce + biotForce, 1.0);
+  currentVelocity = biotForce + radialForce + inertia;
 }
 
 #pragma glslify: export(updateVelocity)
