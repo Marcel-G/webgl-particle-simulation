@@ -1,4 +1,4 @@
-#pragma glslify: decode = require('../utils/decode', BASE=BASE, OFFSET=OFFSET)
+#pragma glslify: decode = require('../utils/decode')
 
 vec2 decodeAt(vec2 atIndex) {
   float scale = GETSCALE();

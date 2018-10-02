@@ -11,23 +11,24 @@ uniform vec2 scale;
 varying vec2 velocity;
 varying float weight;
 
-const float BASE = 255.0;
-const float OFFSET = BASE * BASE / 2.0;
+float scalex() {
+  return scale.x;
+}
+float scaley() {
+  return scale.y;
+}
 
-#pragma glslify: decode = require('../utils/decode', BASE=BASE, OFFSET=OFFSET)
+#pragma glslify: getPositionAt = require('../utils/decodeAt', SAMPLE=positions, GETSCALE=scalex)
+#pragma glslify: getVelocityAt = require('../utils/decodeAt', SAMPLE=velocities, GETSCALE=scaley)
+#pragma glslify: getWeightAt = require('../utils/decodeAt', SAMPLE=weights, GETSCALE=scalex)
 
 void main() {
-    vec4 psample = texture2D(positions, index / (statesize - 1.0));
-    vec2 p = vec2(decode(psample.rg, scale.x), decode(psample.ba, scale.x));
+    vec2 currentPosition = getPositionAt(index / (statesize - 1.0));
+    vec2 currentVelocity = getVelocityAt(index / (statesize - 1.0));
+    float currentWeight = getWeightAt(index / (statesize - 1.0)).x;
 
-    vec4 vsample = texture2D(velocities, index / (statesize - 1.0));
-    vec2 v = vec2(decode(vsample.rg, scale.y), decode(vsample.ba, scale.y));
-
-    vec4 wsample = texture2D(weights, index / (statesize - 1.0));
-    float w = decode(wsample.xy, scale.y);
-
-    weight = w;
-    velocity = v;
-    gl_Position = vec4(3.0 * p / worldsize - 1.5, 0, 1); // extend 1 / 3 past screen boundry ontop of normalisation
+    weight = currentWeight;
+    velocity = currentVelocity;
+    gl_Position = vec4(3.0 * currentPosition / worldsize - 1.5, 0, 1); // extend 1 / 3 past screen boundry ontop of normalisation
     gl_PointSize = size;
 }

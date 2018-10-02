@@ -12,10 +12,7 @@ uniform float frameInterval;
 uniform vec2 scale;
 varying vec2 index;
 
-const float BASE = 255.0;
-const float OFFSET = BASE * BASE / 2.0;
-
-#pragma glslify: encode = require('../utils/encode', BASE=BASE, OFFSET=OFFSET)
+#pragma glslify: encode = require('../utils/encode')
 
 float scalex() {
   return scale.x;
@@ -24,9 +21,9 @@ float scaley() {
   return scale.y;
 }
 
-#pragma glslify: getPositionAt = require('../utils/decodeAt', SAMPLE=positions, GETSCALE=scalex, BASE=BASE, OFFSET=OFFSET)
-#pragma glslify: getVelocityAt = require('../utils/decodeAt', SAMPLE=velocities, GETSCALE=scaley, BASE=BASE, OFFSET=OFFSET)
-#pragma glslify: getWeightAt = require('../utils/decodeAt', SAMPLE=weights, GETSCALE=scalex, BASE=BASE, OFFSET=OFFSET)
+#pragma glslify: getPositionAt = require('../utils/decodeAt', SAMPLE=positions, GETSCALE=scalex)
+#pragma glslify: getVelocityAt = require('../utils/decodeAt', SAMPLE=velocities, GETSCALE=scaley)
+#pragma glslify: getWeightAt = require('../utils/decodeAt', SAMPLE=weights, GETSCALE=scalex)
 
 #pragma glslify: updatePosition = require('./modules/biotSavart/updatePosition', frameInterval=frameInterval)
 #pragma glslify: updateVelocity = require('./modules/biotSavart/updateVelocity', getPositionAt=getPositionAt, getWeightAt=getWeightAt, scalex=scalex, scaley=scaley positions=positions, weights=weights, statesize=statesize, worldsize=worldsize, MAX_STATE_SIZE=MAX_STATE_SIZE)
