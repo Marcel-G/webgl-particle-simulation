@@ -6,6 +6,9 @@ import stepMainF from './shaders/step/main.frag'
 import drawMainV from './shaders/draw/main.vert'
 import drawMainF from './shaders/draw/main.frag'
 
+import trailsMainV from './shaders/trails/main.vert'
+import trailsMainF from './shaders/trails/main.frag'
+
 class ParticleField {
   static BASE = 255
   static encode (value, scale) {
@@ -62,7 +65,8 @@ class ParticleField {
 
     this.programs = {
       step: igloo.program(stepMainV, stepMainF),
-      draw: igloo.program(drawMainV, drawMainF)
+      draw: igloo.program(drawMainV, drawMainF),
+      trails: igloo.program(trailsMainV, trailsMainF)
     }
 
     const texture = () => {
@@ -74,10 +78,15 @@ class ParticleField {
       p1: texture(),
       v0: texture(),
       v1: texture(),
-      w: texture()
+      w: texture(),
+      particles: texture(),
+      trails0: texture(),
+      trails1: texture()
     }
     this.framebuffers = {
-      step: igloo.framebuffer()
+      step: igloo.framebuffer(),
+      draw: igloo.framebuffer(),
+      trails: igloo.framebuffer()
     }
     this.setCount(Math.pow(this.options.stateSize, 2), true)
   }
@@ -136,6 +145,10 @@ class ParticleField {
     this.textures.w.set(rgbaW, tw, th)
     this.textures.p1.blank(tw, th)
     this.textures.v1.blank(tw, th)
+    this.textures.particles.blank(w, h)
+    this.textures.trails0.blank(w, h)
+    this.textures.trails1.blank(w, h)
+
     return this
   }
 
@@ -185,9 +198,12 @@ class ParticleField {
     this.textures.p0.bind(0)
     this.textures.v0.bind(1)
     this.textures.w.bind(2)
+    this.textures.particles.bind(3)
+    this.textures.trails0.bind(4)
 
     this.initStep()
     this.initDraw()
+    this.initTrails()
   }
 
   initStep () {
@@ -242,7 +258,7 @@ class ParticleField {
     const igloo = this.igloo
     const gl = igloo.gl
 
-    igloo.defaultFramebuffer.bind()
+    this.framebuffers.draw.attach(this.textures.particles)
     gl.enable(gl.BLEND)
 
     gl.viewport(0, 0, this.worldsize[0], this.worldsize[1])
@@ -258,6 +274,45 @@ class ParticleField {
     gl.disable(gl.BLEND)
     return this
   }
+
+  initTrails () {
+    this.programs.trails.use()
+      .uniformi('particles', 3)
+      .uniformi('trails', 4)
+  }
+
+  trails () {
+    const igloo = this.igloo
+    const gl = igloo.gl
+
+    this.framebuffers.trails.attach(this.textures.trails1)
+
+    gl.enable(gl.BLEND)
+
+    gl.viewport(0, 0, this.worldsize[0], this.worldsize[1])
+
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    this.programs.trails.use()
+      .attrib('quad', this.buffers.quad, 2)
+      .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2)
+
+    igloo.defaultFramebuffer.bind()
+
+    this.programs.trails.use()
+      .attrib('quad', this.buffers.quad, 2)
+      .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2)
+
+    const tmp = this.textures.trails0
+    this.textures.trails0 = this.textures.trails1
+    this.textures.trails1 = tmp
+
+    this.textures.trails0.bind(4)
+
+    gl.disable(gl.BLEND)
+
+    return this
+  }
   frame (newtime) {
     const now = newtime
     const elapsed = now - this.lastFrameTime
@@ -268,7 +323,7 @@ class ParticleField {
         this.running &&
         (this.options.pauseOnHidden ? !document.hidden : true)
       ) {
-        this.step(elapsed).draw()
+        this.step(elapsed).draw().trails()
       }
     }
     this.afterRender && this.afterRender()
