@@ -18,14 +18,9 @@
       canvas.setAttribute('width', window.innerWidth)
       canvas.setAttribute('height', window.innerHeight)
       document.body.appendChild(canvas)
-      window.addEventListener('resize', () => {
-        demo.setWorldDimensions()
-      })
       demo = new ParticleField(canvas, {
         stateSize: 10
       })
-
-      demo.start()
     })
     </script>
   </body>
