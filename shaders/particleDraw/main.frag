@@ -9,8 +9,7 @@ void main() {
 
   float radius = length(loc - center);
 
-  // gl_FragColor = (radius < 0.5)
-  //   ? color
-  //   : vec4(0, 0, 0, 0);
-  gl_FragColor = vec4(1.0);
+  gl_FragColor = (radius < 0.5)
+    ? vec4(1.0, 1.0, 1.0, 1.0)
+    : vec4(0, 0, 0, 0);
 }

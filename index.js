@@ -9,13 +9,24 @@ import ndarray from 'ndarray'
 const generatePositionData = size => {
   const particleStateData = new Float32Array(size * size * 4)
   for (var i = 0; i < particleStateData.length;) {
-    particleStateData[i++] = Math.random() // position x
-    particleStateData[i++] = Math.random() // position y
-    particleStateData[i++] = Math.random() // velocity x
-    particleStateData[i++] = Math.random() // velocity y
+    particleStateData[i++] = (Math.random() - 0.5) * 2 // position x
+    particleStateData[i++] = (Math.random() - 0.5) * 2 // position y
+    particleStateData[i++] = 0 // velocity x
+    particleStateData[i++] = 0 // velocity y
     // posdata[i++] = Math.random() // weight
   }
   return particleStateData
+}
+
+const generateWeightData = size => {
+  const particleWeightData = new Float32Array(size * size * 4)
+  for (var i = 0; i < particleWeightData.length;) {
+    particleWeightData[i++] = (Math.random() - 0.5) * 2 // weight
+    particleWeightData[i++] = 0
+    particleWeightData[i++] = 0
+    particleWeightData[i++] = 0
+  }
+  return particleWeightData
 }
 
 const generateParticalVaoData = stateSize => {
@@ -62,7 +73,8 @@ class ParticleField {
     this.frameBuffers = {
       particleState: {
         prev: createFbo(this.gl, [stateSize, stateSize], { float: true }),
-        next: createFbo(this.gl, [stateSize, stateSize], { float: true })
+        next: createFbo(this.gl, [stateSize, stateSize], { float: true }),
+        weights: createFbo(this.gl, [stateSize, stateSize], { float: true })
       }
     }
 
@@ -71,8 +83,12 @@ class ParticleField {
     this.frameBuffers.particleState.prev.color[0].setPixels(ndarray(particleStateData, [stateSize, stateSize, 4]))
     this.frameBuffers.particleState.next.color[0].setPixels(ndarray(particleStateData, [stateSize, stateSize, 4]))
 
+    const particleWeightData = generateWeightData(stateSize)
+
+    this.frameBuffers.particleState.weights.color[0].setPixels(ndarray(particleWeightData, [stateSize, stateSize, 4]))
+
     this.shaders.particleLogic.attributes.position.location = 0
-    this.shaders.particleDraw.attributes.position.location = 0
+    // this.shaders.particleDraw.attributes.position.location = 0
 
     const particleVaoIndexes = generateParticalVaoData(stateSize)
 
@@ -104,6 +120,7 @@ class ParticleField {
     particleState.next.bind()
     particleLogic.bind()
     particleLogic.uniforms.particleState = particleState.prev.color[0].bind(0)
+    particleLogic.uniforms.particleWeights = particleState.weights.color[0].bind(1)
     particleLogic.uniforms.screenSize = [canvas.width, canvas.height]
     particleLogic.uniforms.stateSize = stateSize
     gl.viewport(0, 0, stateSize, stateSize)

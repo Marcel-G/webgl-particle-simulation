@@ -1,17 +1,18 @@
 precision highp float;
 
-#define MAX_STATE_SIZE 50
+#define MAX_STATE_SIZE 100
 
 uniform sampler2D particleState;
-uniform vec2 stateSize;
+uniform sampler2D particleWeights;
+uniform float stateSize;
 uniform vec2 screenSize;
 uniform float frameInterval;
 varying vec2 vUv;
 
-#define frameInterval 40.0
+#define frameInterval 60.0
 
 #pragma glslify: updatePosition = require('./modules/biotSavart/updatePosition', frameInterval=frameInterval)
-#pragma glslify: updateVelocity = require('./modules/biotSavart/updateVelocity', particleState=particleState, stateSize=stateSize, screenSize=screenSize, MAX_STATE_SIZE=MAX_STATE_SIZE)
+#pragma glslify: updateVelocity = require('./modules/biotSavart/updateVelocity', particleState=particleState, stateSize=stateSize, particleWeights=particleWeights, screenSize=screenSize, MAX_STATE_SIZE=MAX_STATE_SIZE)
 
 void main() {
   vec4 particleStateValues = texture2D(particleState, vUv);
