@@ -98,6 +98,9 @@ class ParticleField {
         'size': 2
       }
     ])
+
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
+    this.gl.clearColor(0, 0, 0, 1)
   }
 
   ping(pong) {
@@ -137,8 +140,9 @@ class ParticleField {
 
     ping(particleState)
 
-    gl.enable(gl.BLEND)
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    gl.enable(gl.BLEND)
 
     particleDraw.bind()
     particleDraw.uniforms.particleState = particleState.prev.color[0].bind(0)
