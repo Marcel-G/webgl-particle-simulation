@@ -1,3 +1,5 @@
+// Particle Logic Fragment Shader
+
 precision highp float;
 
 #define MAX_STATE_SIZE 100

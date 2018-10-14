@@ -62,7 +62,6 @@
   },
   "eslintConfig": {
     "parser": "babel-eslint",
-    "extends": "barebones",
     "globals": {
       "fetch": false,
       "requestAnimationFrame": false

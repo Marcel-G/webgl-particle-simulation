@@ -30,22 +30,38 @@ const generateWeightData = size => {
 }
 
 const generateParticalVaoData = stateSize => {
-  let indexes = new Float32Array(stateSize * stateSize * 2)
+  let indexes = new Float32Array(stateSize * stateSize * 2 * 5)
   for (var y = 0; y < stateSize; y++) {
     for (var x = 0; x < stateSize; x++) {
-      var i = y * stateSize * 2 + x * 2
-      indexes[i + 0] = x
-      indexes[i + 1] = y
+      var index = (y * stateSize * 5) + (x * 5)
+      for (var i = 0; i < 5; i++) {
+        var f = (index + i) * 2
+        indexes[f + 0] = x
+        indexes[f + 1] = i * stateSize + y
+      }
     }
   }
   return indexes
 }
 
+// const generateParticalVaoData = stateSize => {
+//   let indexes = new Float32Array(stateSize * stateSize * 2 * 5)
+//   for (var y = 0; y < stateSize * 5; y++) {
+//     for (var x = 0; x < stateSize; x++) {
+//       var i = y * stateSize * 2 + x * 2
+//       indexes[i + 0] = x
+//       indexes[i + 1] = y
+//     }
+//   }
+//   return indexes
+// }
+
 import particleLogicFrag from './shaders/particleLogic/main.frag'
-import particleLogicVert from './shaders/particleLogic/main.vert'
 
 import particleDrawFrag from './shaders/particleDraw/main.frag'
 import particleDrawVert from './shaders/particleDraw/main.vert'
+
+import trailsDrawFrag from './shaders/trailsLogic/main.frag'
 
 import triangleVert from './shaders/triangle.vert'
 
@@ -65,7 +81,8 @@ class ParticleField {
 
     this.shaders = {
       particleLogic: createShader(this.gl, triangleVert, particleLogicFrag),
-      particleDraw: createShader(this.gl, particleDrawVert, particleDrawFrag)
+      particleDraw: createShader(this.gl, particleDrawVert, particleDrawFrag),
+      trailsLogic: createShader(this.gl, triangleVert, trailsDrawFrag)
     }
 
     const { stateSize } = this.options
@@ -75,6 +92,10 @@ class ParticleField {
         prev: createFbo(this.gl, [stateSize, stateSize], { float: true }),
         next: createFbo(this.gl, [stateSize, stateSize], { float: true }),
         weights: createFbo(this.gl, [stateSize, stateSize], { float: true })
+      },
+      trailState: {
+        prev: createFbo(this.gl, [stateSize, stateSize * 5], { float: true }),
+        next: createFbo(this.gl, [stateSize, stateSize * 5], { float: true }),
       }
     }
 
@@ -88,7 +109,10 @@ class ParticleField {
     this.frameBuffers.particleState.weights.color[0].setPixels(ndarray(particleWeightData, [stateSize, stateSize, 4]))
 
     this.shaders.particleLogic.attributes.position.location = 0
-    // this.shaders.particleDraw.attributes.position.location = 0
+    this.shaders.particleDraw.attributes.position.location = 0
+
+    this.frameBuffers.trailState.prev.color[0].setPixels(ndarray(0, [stateSize, stateSize * 5, 4]))
+    this.frameBuffers.trailState.next.color[0].setPixels(ndarray(0, [stateSize, stateSize * 5, 4]))
 
     const particleVaoIndexes = generateParticalVaoData(stateSize)
 
@@ -101,6 +125,9 @@ class ParticleField {
 
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
     this.gl.clearColor(0, 0, 0, 1)
+
+    this.advanceTrail = 0
+    this.frameCount = 0
   }
 
   ping(pong) {
@@ -116,9 +143,9 @@ class ParticleField {
       canvas,
       options: { stateSize },
       shaders: { particleLogic },
-      frameBuffers: { particleState }
+      frameBuffers: { particleState },
+      ping
     } = this
-
 
     particleState.next.bind()
     particleLogic.bind()
@@ -132,20 +159,47 @@ class ParticleField {
 
     gl.disable(gl.DEPTH_TEST)
 
+    ping(particleState)
+
+    const {
+      shaders: { trailsLogic },
+      frameBuffers: { trailState },
+      particleVao,
+      advanceTrail,
+    } = this
+
+    if (this.frameCount > 20) {
+      this.advanceTrail = 1
+      this.frameCount = 0
+    } else {
+      this.advanceTrail = 0
+    }
+
+    this.frameCount++
+
+    trailState.next.bind()
+    trailsLogic.bind()
+    trailsLogic.uniforms.advanceTrail = advanceTrail
+    trailsLogic.uniforms.particleState = particleState.prev.color[0].bind(0)
+    trailsLogic.uniforms.trailState = trailState.prev.color[0].bind(1)
+    trailsLogic.uniforms.screenSize = [canvas.width, canvas.height]
+    trailsLogic.uniforms.stateSize = stateSize
+    gl.viewport(0, 0, stateSize, stateSize * 5)
+
+    triangle(gl)
+
+    ping(trailState)
 
     const {
       shaders: { particleDraw },
-      ping
     } = this
 
-    ping(particleState)
-
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.enable(gl.BLEND)
 
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
     particleDraw.bind()
-    particleDraw.uniforms.particleState = particleState.prev.color[0].bind(0)
+    particleDraw.uniforms.trailState = trailState.prev.color[0].bind(3)
     particleDraw.uniforms.screenSize = [canvas.width, canvas.height]
     particleDraw.uniforms.stateSize = stateSize
 
@@ -153,12 +207,14 @@ class ParticleField {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    this.particleVao.bind()
-    this.particleVao.draw(gl.POINTS, stateSize * stateSize)
-    this.particleVao.unbind()
+    particleVao.bind()
+    for (var i = 0; i < 10; i++) {
+      particleVao.draw(gl.POINTS, 1, i * 5)
+      particleVao.draw(gl.LINE_STRIP, 5, i * 5)
+    }
+    particleVao.unbind()
 
     gl.disable(gl.BLEND)
-
   }
 }
 
