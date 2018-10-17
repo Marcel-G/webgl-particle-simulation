@@ -11,9 +11,8 @@ const generatePositionData = size => {
   for (var i = 0; i < particleStateData.length;) {
     particleStateData[i++] = (Math.random() - 0.5) * 2 // position x
     particleStateData[i++] = (Math.random() - 0.5) * 2 // position y
-    particleStateData[i++] = 0 // velocity x
-    particleStateData[i++] = 0 // velocity y
-    // posdata[i++] = Math.random() // weight
+    particleStateData[i++] = 1.0 // velocity x
+    particleStateData[i++] = 1.0 // velocity y
   }
   return particleStateData
 }
@@ -36,25 +35,13 @@ const generateParticalVaoData = stateSize => {
       var index = (y * stateSize * 5) + (x * 5)
       for (var i = 0; i < 5; i++) {
         var f = (index + i) * 2
-        indexes[f + 0] = x
-        indexes[f + 1] = i * stateSize + y
+        indexes[f + 0] = x / (stateSize - 1)
+        indexes[f + 1] = (i * stateSize + y) / ((stateSize * 5) - 1)
       }
     }
   }
   return indexes
 }
-
-// const generateParticalVaoData = stateSize => {
-//   let indexes = new Float32Array(stateSize * stateSize * 2 * 5)
-//   for (var y = 0; y < stateSize * 5; y++) {
-//     for (var x = 0; x < stateSize; x++) {
-//       var i = y * stateSize * 2 + x * 2
-//       indexes[i + 0] = x
-//       indexes[i + 1] = y
-//     }
-//   }
-//   return indexes
-// }
 
 import particleLogicFrag from './shaders/particleLogic/main.frag'
 
@@ -198,6 +185,7 @@ class ParticleField {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
+
     particleDraw.bind()
     particleDraw.uniforms.trailState = trailState.prev.color[0].bind(3)
     particleDraw.uniforms.screenSize = [canvas.width, canvas.height]
@@ -208,7 +196,7 @@ class ParticleField {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     particleVao.bind()
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < stateSize * stateSize; i++) {
       particleVao.draw(gl.POINTS, 1, i * 5)
       particleVao.draw(gl.LINE_STRIP, 5, i * 5)
     }

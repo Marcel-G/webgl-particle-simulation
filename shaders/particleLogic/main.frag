@@ -17,7 +17,9 @@ varying vec2 vUv;
 #pragma glslify: updateVelocity = require('./modules/biotSavart/updateVelocity', particleState=particleState, stateSize=stateSize, particleWeights=particleWeights, screenSize=screenSize, MAX_STATE_SIZE=MAX_STATE_SIZE)
 
 void main() {
-  vec4 particleStateValues = texture2D(particleState, vUv);
+  vec2 uv = gl_FragCoord.xy / stateSize;
+
+  vec4 particleStateValues = texture2D(particleState, uv);
   vec2 currentPosition = particleStateValues.xy;
   vec2 currentVelocity = particleStateValues.zw;
 

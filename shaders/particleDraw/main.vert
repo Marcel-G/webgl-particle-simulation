@@ -7,11 +7,10 @@ uniform float stateSize;
 uniform vec2 screenSize;
 
 attribute vec2 position;
-varying vec2 vUv;
 varying vec2 currentVelocity;
 
 void main() {
-    vec4 trailStateValues = texture2D(trailState, vec2(position.x / stateSize, position.y / (stateSize * 5.0)));
+    vec4 trailStateValues = texture2D(trailState, position);
     vec2 currentPosition = trailStateValues.xy;
     currentVelocity = trailStateValues.zw;
 
