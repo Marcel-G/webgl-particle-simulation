@@ -3,6 +3,7 @@ import getContext from 'gl-context'
 import createFbo from 'gl-fbo'
 import triangle from 'a-big-triangle'
 import createVao from 'gl-vao'
+import pip from './lib/gl-texture2d-pip'
 import createBuffer from 'gl-buffer'
 import ndarray from 'ndarray'
 
@@ -28,15 +29,15 @@ const generateWeightData = size => {
   return particleWeightData
 }
 
-const generateParticalVaoData = stateSize => {
-  let indexes = new Float32Array(stateSize * stateSize * 2 * 5)
+const generateParticalVaoData = (stateSize, count) => {
+  let indexes = new Float32Array(stateSize * stateSize * 2 * count)
   for (var y = 0; y < stateSize; y++) {
     for (var x = 0; x < stateSize; x++) {
-      var index = (y * stateSize * 5) + (x * 5)
-      for (var i = 0; i < 5; i++) {
+      var index = (y * stateSize * count) + (x * count)
+      for (var i = 0; i < count; i++) {
         var f = (index + i) * 2
         indexes[f + 0] = x / (stateSize - 1)
-        indexes[f + 1] = (i * stateSize + y) / ((stateSize * 5) - 1)
+        indexes[f + 1] = (i * stateSize + y) / ((stateSize * count) - 1)
       }
     }
   }
@@ -58,6 +59,7 @@ class ParticleField {
       stateSize: 10,
       color: [1, 1, 1, 1],
       fps: 60,
+      trailLength: 50,
       pauseOnHidden: true,
       ...options
     }
@@ -81,8 +83,8 @@ class ParticleField {
         weights: createFbo(this.gl, [stateSize, stateSize], { float: true })
       },
       trailState: {
-        prev: createFbo(this.gl, [stateSize, stateSize * 5], { float: true }),
-        next: createFbo(this.gl, [stateSize, stateSize * 5], { float: true }),
+        prev: createFbo(this.gl, [stateSize, stateSize * this.options.trailLength], { float: true }),
+        next: createFbo(this.gl, [stateSize, stateSize * this.options.trailLength], { float: true }),
       }
     }
 
@@ -98,10 +100,10 @@ class ParticleField {
     this.shaders.particleLogic.attributes.position.location = 0
     this.shaders.particleDraw.attributes.position.location = 0
 
-    this.frameBuffers.trailState.prev.color[0].setPixels(ndarray(0, [stateSize, stateSize * 5, 4]))
-    this.frameBuffers.trailState.next.color[0].setPixels(ndarray(0, [stateSize, stateSize * 5, 4]))
+    this.frameBuffers.trailState.prev.color[0].setPixels(ndarray(0, [stateSize, stateSize * this.options.trailLength, 4]))
+    this.frameBuffers.trailState.next.color[0].setPixels(ndarray(0, [stateSize, stateSize * this.options.trailLength, 4]))
 
-    const particleVaoIndexes = generateParticalVaoData(stateSize)
+    const particleVaoIndexes = generateParticalVaoData(stateSize, this.options.trailLength)
 
     this.particleVao = createVao(this.gl, [
       { 'buffer': createBuffer(this.gl, particleVaoIndexes, this.gl.ARRAY_BUFFER, this.gl.STATIC_DRAW),
@@ -155,7 +157,7 @@ class ParticleField {
       advanceTrail,
     } = this
 
-    if (this.frameCount > 20) {
+    if (this.frameCount > 1) {
       this.advanceTrail = 1
       this.frameCount = 0
     } else {
@@ -167,11 +169,12 @@ class ParticleField {
     trailState.next.bind()
     trailsLogic.bind()
     trailsLogic.uniforms.advanceTrail = advanceTrail
+    trailsLogic.uniforms.stateCount = this.options.trailLength
     trailsLogic.uniforms.particleState = particleState.prev.color[0].bind(0)
     trailsLogic.uniforms.trailState = trailState.prev.color[0].bind(1)
     trailsLogic.uniforms.screenSize = [canvas.width, canvas.height]
     trailsLogic.uniforms.stateSize = stateSize
-    gl.viewport(0, 0, stateSize, stateSize * 5)
+    gl.viewport(0, 0, stateSize, stateSize * this.options.trailLength)
 
     triangle(gl)
 
@@ -196,13 +199,23 @@ class ParticleField {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     particleVao.bind()
+
     for (var i = 0; i < stateSize * stateSize; i++) {
-      particleVao.draw(gl.POINTS, 1, i * 5)
-      particleVao.draw(gl.LINE_STRIP, 5, i * 5)
+      particleVao.draw(gl.LINE_STRIP, this.options.trailLength, i * this.options.trailLength)
+      // particleVao.draw(gl.POINTS, 1, i * this.options.trailLength)
     }
+
     particleVao.unbind()
 
     gl.disable(gl.BLEND)
+
+    pip([
+      particleState.prev.color[0],
+      particleState.next.color[0],
+      trailState.prev.color[0],
+      trailState.next.color[0],
+      particleState.weights.color[0]
+    ])
   }
 }
 

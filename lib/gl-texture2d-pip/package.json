@@ -1,0 +1,102 @@
+{
+  "_from": "gl-texture2d-pip",
+  "_id": "gl-texture2d-pip@1.0.0",
+  "_inBundle": false,
+  "_integrity": "sha1-kLLTKm0gWzXfteKiGA5LmFxCxtc=",
+  "_location": "/gl-texture2d-pip",
+  "_phantomChildren": {
+    "core-util-is": "1.0.2",
+    "glsl-inject-defines": "1.0.3",
+    "glsl-resolve": "0.0.1",
+    "glsl-token-defines": "1.0.0",
+    "glsl-token-depth": "1.1.2",
+    "glsl-token-descope": "1.0.2",
+    "glsl-token-scope": "1.1.2",
+    "glsl-token-string": "1.0.1",
+    "glsl-tokenizer": "2.1.4",
+    "glslify-deps": "1.3.1",
+    "inherits": "2.0.3",
+    "resolve": "1.8.1",
+    "static-module": "1.5.0",
+    "through2": "0.6.5",
+    "xtend": "4.0.1"
+  },
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "gl-texture2d-pip",
+    "name": "gl-texture2d-pip",
+    "escapedName": "gl-texture2d-pip",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/gl-texture2d-pip/-/gl-texture2d-pip-1.0.0.tgz",
+  "_shasum": "90b2d32a6d205b35dfb5e2a2180e4b985c42c6d7",
+  "_spec": "gl-texture2d-pip",
+  "_where": "/Users/mgleeson/dev/webgl-particle-simulation",
+  "author": {
+    "name": "Hugh Kennedy",
+    "email": "hughskennedy@gmail.com",
+    "url": "https://github.com/hughsk"
+  },
+  "browserify": {
+    "transform": [
+      "glslify"
+    ]
+  },
+  "bugs": {
+    "url": "https://github.com/stackgl/gl-texture2d-pip/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "a-big-triangle": "^1.0.2",
+    "gl-shader": "^4.0.5",
+    "glslify": "^2.3.1",
+    "weak-map": "^1.0.5"
+  },
+  "deprecated": false,
+  "description": "Preview the contents of a set of gl-texture instances alongside your main render pass.",
+  "devDependencies": {
+    "budo": "^4.2.1",
+    "bunny": "^1.0.1",
+    "canvas-fit": "^1.5.0",
+    "canvas-orbit-camera": "^1.0.2",
+    "eye-vector": "0.0.0",
+    "gl-context": "^0.1.1",
+    "gl-fbo": "^2.0.5",
+    "gl-geometry": "^1.1.1",
+    "gl-mat4": "^1.1.4",
+    "glsl-fog": "0.0.1",
+    "normals": "^1.0.1",
+    "snowden": "^1.0.1"
+  },
+  "homepage": "https://github.com/stackgl/gl-texture2d-pip",
+  "keywords": [
+    "render,",
+    "pass,",
+    "deferred,",
+    "preview,",
+    "ecosystem:stackgl,",
+    "gl,",
+    "webgl,",
+    "texture2d,",
+    "pip"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "name": "gl-texture2d-pip",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/stackgl/gl-texture2d-pip.git"
+  },
+  "scripts": {
+    "bundle": "browserify demo/index.js -o bundle.js",
+    "start": "budo demo/index.js:bundle.js"
+  },
+  "version": "1.0.0"
+}
