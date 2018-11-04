@@ -36,7 +36,7 @@ void main() {
     gl_FragColor = vec4(
       trailSample.xy,
       1.0,
-      max(trailSample.w - 0.05, 0.0)
+      max(trailSample.w - (1.0 / stateCount), 0.0)
     );
   }
 }

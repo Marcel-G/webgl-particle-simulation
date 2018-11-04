@@ -56,10 +56,10 @@ import triangleVert from './shaders/triangle.vert'
 class ParticleField {
   constructor(canvas, options) {
     this.options = {
-      stateSize: 10,
+      stateSize: 5,
       color: [1, 1, 1, 1],
       fps: 60,
-      trailLength: 50,
+      trailLength: 10,
       pauseOnHidden: true,
       ...options
     }
