@@ -1,295 +1,240 @@
-import Igloo from './lib/igloo'
+import createShader from 'gl-shader'
+import getContext from 'webgl-context'
+import loop from 'canvas-loop'
+import createFbo from 'gl-fbo'
+import triangle from 'a-big-triangle'
+import createVao from 'gl-vao'
+import pip from './lib/gl-texture2d-pip'
+import createBuffer from 'gl-buffer'
+import ndarray from 'ndarray'
 
-import quadV from './shaders/quad.vert'
-import stepF from './shaders/step.frag'
+const generatePositionData = size => {
+  const particleStateData = new Float32Array(size * size * 4)
+  for (var i = 0; i < particleStateData.length;) {
+    particleStateData[i++] = (Math.random() - 0.5) * 2 // position x
+    particleStateData[i++] = (Math.random() - 0.5) * 2 // position y
+    particleStateData[i++] = 1.0 // velocity x
+    particleStateData[i++] = 1.0 // velocity y
+  }
+  return particleStateData
+}
 
-import drawV from './shaders/draw.vert'
-import drawF from './shaders/draw.frag'
+const generateWeightData = size => {
+  const particleWeightData = new Float32Array(size * size * 4)
+  for (var i = 0; i < particleWeightData.length;) {
+    particleWeightData[i++] = (Math.random() - 0.5) * 2 // weight
+    particleWeightData[i++] = 0
+    particleWeightData[i++] = 0
+    particleWeightData[i++] = 0
+  }
+  return particleWeightData
+}
+
+const generateParticalVaoData = (stateSize, count) => {
+  let indexes = new Float32Array(stateSize * stateSize * 2 * count)
+  for (var y = 0; y < stateSize; y++) {
+    for (var x = 0; x < stateSize; x++) {
+      var index = (y * stateSize * count) + (x * count)
+      for (var i = 0; i < count; i++) {
+        var f = (index + i) * 2
+        indexes[f + 0] = x / (stateSize - 1)
+        indexes[f + 1] = (i * stateSize + y) / ((stateSize * count) - 1)
+      }
+    }
+  }
+  return indexes
+}
+
+import particleLogicFrag from './shaders/particleLogic/main.frag'
+
+import particleDrawFrag from './shaders/particleDraw/main.frag'
+import particleDrawVert from './shaders/particleDraw/main.vert'
+
+import trailsDrawFrag from './shaders/trailsLogic/main.frag'
+
+import triangleVert from './shaders/triangle.vert'
 
 class ParticleField {
-  static BASE = 255
-  static encode (value, scale) {
-    var b = ParticleField.BASE
-    value = value * scale + b * b / 2
-    var pair = [
-      Math.floor((value % b) / b * 255),
-      Math.floor(Math.floor(value / b) / b * 255)
-    ]
-    return pair
-  }
-
-  static decode (pair, scale) {
-    var b = ParticleField.BASE
-    return (((pair[0] / 255) * b + (pair[1] / 255) * b * b) - b * b / 2) / scale
-  }
-
-  constructor (canvas, options) {
-    const igloo = this.igloo = new Igloo(canvas)
-    const gl = igloo.gl
+  constructor(canvas, options) {
     this.options = {
-      stateSize: 10,
+      stateSize: 5,
       color: [1, 1, 1, 1],
       fps: 60,
+      trailLength: 10,
+      pauseOnHidden: true,
+      debug: false,
       ...options
     }
 
-    this.fpsInterval = 1000 / this.options.fps
+    
+    this.gl = getContext({
+      canvas,
+      antialias: true
+    })
+    
+    this.canvas = canvas
 
-    this.setWorldDimensions()
+    const app = loop(canvas, {
+      scale: window.devicePixelRatio,
+      parent: this.options.parent
+    }).on('tick', this.render.bind(this))
 
-    const scale = Math.floor(Math.pow(ParticleField.BASE, 2) / Math.max(this.worldsize[0], this.worldsize[1]) / 3)
-    this.scale = [scale, scale * 10]
-    this.size = 5
+    this.shaders = {
+      particleLogic: createShader(this.gl, triangleVert, particleLogicFrag),
+      particleDraw: createShader(this.gl, particleDrawVert, particleDrawFrag),
+      trailsLogic: createShader(this.gl, triangleVert, trailsDrawFrag)
+    }
+
+    const { stateSize } = this.options
+
+    this.frameBuffers = {
+      particleState: {
+        prev: createFbo(this.gl, [stateSize, stateSize], { float: true }),
+        next: createFbo(this.gl, [stateSize, stateSize], { float: true }),
+        weights: createFbo(this.gl, [stateSize, stateSize], { float: true })
+      },
+      trailState: {
+        prev: createFbo(this.gl, [stateSize, stateSize * this.options.trailLength], { float: true }),
+        next: createFbo(this.gl, [stateSize, stateSize * this.options.trailLength], { float: true }),
+      }
+    }
+
+    const particleStateData = generatePositionData(stateSize)
+
+    this.frameBuffers.particleState.prev.color[0].setPixels(ndarray(particleStateData, [stateSize, stateSize, 4]))
+    this.frameBuffers.particleState.next.color[0].setPixels(ndarray(particleStateData, [stateSize, stateSize, 4]))
+
+    const particleWeightData = generateWeightData(stateSize)
+
+    this.frameBuffers.particleState.weights.color[0].setPixels(ndarray(particleWeightData, [stateSize, stateSize, 4]))
+
+    this.shaders.particleLogic.attributes.position.location = 0
+    this.shaders.particleDraw.attributes.position.location = 0
+
+    this.frameBuffers.trailState.prev.color[0].setPixels(ndarray(0, [stateSize, stateSize * this.options.trailLength, 4]))
+    this.frameBuffers.trailState.next.color[0].setPixels(ndarray(0, [stateSize, stateSize * this.options.trailLength, 4]))
+
+    const particleVaoIndexes = generateParticalVaoData(stateSize, this.options.trailLength)
+
+    this.particleVao = createVao(this.gl, [
+      { 'buffer': createBuffer(this.gl, particleVaoIndexes, this.gl.ARRAY_BUFFER, this.gl.STATIC_DRAW),
+        'type': this.gl.FLOAT,
+        'size': 2
+      }
+    ])
+
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA)
+    this.gl.clearColor(0, 0, 0, 1)
+
+    this.advanceTrail = 0
+    this.frameCount = 0
+
+    this.start = () => app.start()
+    this.stop = () => app.stop()
+
+  }
+
+  ping(pong) {
+    var next = pong.next
+    var prev = pong.prev
+    pong.next = prev
+    pong.prev = next
+  }
+
+  render() {
+    const {
+      gl,
+      canvas,
+      options: { stateSize },
+      shaders: { particleLogic },
+      frameBuffers: { particleState },
+      ping
+    } = this
+
+    particleState.next.bind()
+    particleLogic.bind()
+    particleLogic.uniforms.particleState = particleState.prev.color[0].bind(0)
+    particleLogic.uniforms.particleWeights = particleState.weights.color[0].bind(1)
+    particleLogic.uniforms.screenSize = [canvas.width, canvas.height]
+    particleLogic.uniforms.stateSize = stateSize
+    gl.viewport(0, 0, stateSize, stateSize)
+
+    triangle(gl)
 
     gl.disable(gl.DEPTH_TEST)
 
-    if (gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) === 0) {
-      var msg = 'Vertex shader texture access not available.' +
-        'Try again on another platform.'
-      alert(msg)
-      throw new Error(msg)
+    ping(particleState)
+
+    const {
+      shaders: { trailsLogic },
+      frameBuffers: { trailState },
+      particleVao,
+      advanceTrail,
+    } = this
+
+    if (this.frameCount > 1) {
+      this.advanceTrail = 1
+      this.frameCount = 0
+    } else {
+      this.advanceTrail = 0
     }
 
-    this.color = this.options.color
-    this.running = false
+    this.frameCount++
 
-    this.buffers = {
-      quad: igloo.array(Igloo.QUAD2),
-      indexes: igloo.array(),
-      point: igloo.array(new Float32Array([0, 0]))
-    }
+    trailState.next.bind()
+    trailsLogic.bind()
+    trailsLogic.uniforms.advanceTrail = advanceTrail
+    trailsLogic.uniforms.stateCount = this.options.trailLength
+    trailsLogic.uniforms.particleState = particleState.prev.color[0].bind(0)
+    trailsLogic.uniforms.trailState = trailState.prev.color[0].bind(1)
+    trailsLogic.uniforms.screenSize = [canvas.width, canvas.height]
+    trailsLogic.uniforms.stateSize = stateSize
+    gl.viewport(0, 0, stateSize, stateSize * this.options.trailLength)
 
-    this.programs = {
-      step: igloo.program(quadV, stepF),
-      draw: igloo.program(drawV, drawF)
-    }
+    triangle(gl)
 
-    const texture = () => {
-      return igloo.texture(null, gl.RGBA, gl.CLAMP_TO_EDGE, gl.NEAREST)
-    }
+    ping(trailState)
 
-    this.textures = {
-      p0: texture(),
-      p1: texture(),
-      v0: texture(),
-      v1: texture(),
-      w: texture()
-    }
-    this.framebuffers = {
-      step: igloo.framebuffer()
-    }
-    this.setCount(Math.pow(this.options.stateSize, 2), true)
-  }
-  setWorldDimensions = () => {
-    var devicePixelRatio = window.devicePixelRatio || 1
-    var w = Math.floor(this.igloo.canvas.offsetWidth * devicePixelRatio)
-    var h = Math.floor(this.igloo.canvas.offsetHeight * devicePixelRatio)
-    if (this.igloo.canvas.width !== w || this.igloo.canvas.height !== h) {
-      this.igloo.canvas.width = w
-      this.igloo.canvas.height = h
-    }
-    this.worldsize = new Float32Array([this.igloo.canvas.width, this.igloo.canvas.height])
-  }
-  setCount (n) {
-    const tw = Math.ceil(Math.sqrt(n))
-    const th = Math.floor(Math.sqrt(n))
-    this.statesize = new Float32Array([tw, th])
-    this.initTextures()
-    this.initBuffers()
-    return this
-  }
+    const {
+      shaders: { particleDraw },
+    } = this
 
-  initTextures () {
-    const [tw, th] = this.statesize
-    const [w, h] = this.worldsize
-    const s = this.scale
-    let rgbaP = new Uint8Array(tw * th * 4) // stores positon vec2
-    let rgbaV = new Uint8Array(tw * th * 4) // stores velocity vec2
-    let rgbaW = new Uint8Array(tw * th * 4) // stores weights float
-    for (var y = 0; y < th; y++) {
-      for (var x = 0; x < tw; x++) {
-        const i = y * tw * 4 + x * 4
-        // calculate random position on outer circle boundry
-        const radius = Math.max(w, h) / 2 + Math.random() * 100
-        const angle = Math.random() * 360 / Math.PI
-        const px = ParticleField.encode(radius * Math.cos(angle) + (w / 2), s[0])
-        const py = ParticleField.encode(radius * Math.sin(angle) + (h / 2), s[0])
-
-        const vx = ParticleField.encode(0.0, s[1])
-        const vy = ParticleField.encode(0.0, s[1])
-        const wv = ParticleField.encode(2 * Math.random() - 1, s[1])
-        rgbaP[i + 0] = px[0]
-        rgbaP[i + 1] = px[1]
-        rgbaP[i + 2] = py[0]
-        rgbaP[i + 3] = py[1]
-        rgbaV[i + 0] = vx[0]
-        rgbaV[i + 1] = vx[1]
-        rgbaV[i + 2] = vy[0]
-        rgbaV[i + 3] = vy[1]
-        rgbaW[i + 0] = wv[0]
-        rgbaW[i + 1] = wv[1]
-      }
-    }
-    this.textures.p0.set(rgbaP, tw, th)
-    this.textures.v0.set(rgbaV, tw, th)
-    this.textures.w.set(rgbaW, tw, th)
-    this.textures.p1.blank(tw, th)
-    this.textures.v1.blank(tw, th)
-    return this
-  }
-
-  initBuffers () {
-    const [tw, th] = this.statesize
-    const gl = this.igloo.gl
-    let indexes = new Float32Array(tw * th * 2)
-    for (var y = 0; y < th; y++) {
-      for (var x = 0; x < tw; x++) {
-        var i = y * tw * 2 + x * 2
-        indexes[i + 0] = x
-        indexes[i + 1] = y
-      }
-    }
-    this.buffers.indexes.update(indexes, gl.STATIC_DRAW)
-    return this
-  }
-
-  swapPositionTextures () {
-    const tmp = this.textures.p0
-    this.textures.p0 = this.textures.p1
-    this.textures.p1 = tmp
-
-    this.textures.p0.bind(0)
-
-    return this
-  }
-
-  swapVelocityTextures () {
-    const tmp = this.textures.v0
-    this.textures.v0 = this.textures.v1
-    this.textures.v1 = tmp
-
-    this.textures.v0.bind(1)
-
-    return this
-  }
-
-  init () {
-    const igloo = this.igloo
-    const gl = igloo.gl
-    gl.disable(gl.BLEND)
-
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-    gl.clearColor(0, 0, 0, 1)
-
-    this.textures.p0.bind(0)
-    this.textures.v0.bind(1)
-    this.textures.w.bind(2)
-
-    this.initStep()
-    this.initDraw()
-  }
-
-  initStep () {
-    this.programs.step.use()
-      .uniformi('positions', 0)
-      .uniformi('velocities', 1)
-      .uniformi('weights', 2)
-      .uniform('statesize', this.statesize)
-  }
-
-  step (frameInterval) {
-    const igloo = this.igloo
-    const gl = igloo.gl
-
-    gl.viewport(0, 0, this.statesize[0], this.statesize[1])
-
-    this.programs.step.use()
-      .uniform('scale', this.scale)
-      .uniform('worldsize', this.worldsize)
-      .uniform('randomSeed', [Math.random(), Math.random()])
-      .uniform('frameInterval', frameInterval)
-      .attrib('quad', this.buffers.quad, 2)
-
-    // update velocities
-    this.framebuffers.step.attach(this.textures.v1)
-    this.programs.step
-      .uniformi('derivative', 0)
-      .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2)
-
-    this.swapVelocityTextures()
-
-    // update position
-    this.framebuffers.step.attach(this.textures.p1)
-    this.programs.step
-      .uniformi('derivative', 1)
-      .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2)
-
-    this.swapPositionTextures()
-
-    return this
-  }
-
-  initDraw () {
-    this.programs.draw.use()
-      .uniformi('positions', 0)
-      .uniformi('velocities', 1)
-      .uniformi('weights', 2)
-      .uniform('size', this.size)
-      .uniform('statesize', this.statesize)
-      .uniform('color', this.color)
-  }
-
-  draw () {
-    const igloo = this.igloo
-    const gl = igloo.gl
-
-    igloo.defaultFramebuffer.bind()
     gl.enable(gl.BLEND)
 
-    gl.viewport(0, 0, this.worldsize[0], this.worldsize[1])
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-    gl.clear(gl.COLOR_BUFFER_BIT)
 
-    this.programs.draw.use()
-      .uniform('scale', this.scale)
-      .uniform('worldsize', this.worldsize)
-      .attrib('index', this.buffers.indexes, 2)
-      .draw(gl.POINTS, this.statesize[0] * this.statesize[1])
+    particleDraw.bind()
+    particleDraw.uniforms.trailState = trailState.prev.color[0].bind(3)
+    particleDraw.uniforms.screenSize = [canvas.width, canvas.height]
+    particleDraw.uniforms.stateSize = stateSize
+
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+    particleVao.bind()
+
+    for (var i = 0; i < stateSize * stateSize; i++) {
+      particleVao.draw(gl.LINE_STRIP, this.options.trailLength, i * this.options.trailLength)
+      // particleVao.draw(gl.POINTS, 1, i * this.options.trailLength)
+    }
+
+    particleVao.unbind()
 
     gl.disable(gl.BLEND)
-    return this
-  }
-  frame (newtime) {
-    const now = newtime
-    const elapsed = now - this.lastFrameTime
 
-    if (elapsed > this.fpsInterval) {
-      this.lastFrameTime = now - (elapsed % this.fpsInterval)
-
-      if (this.running && !document.hidden) {
-        this.step(elapsed).draw()
-      }
+    if (this.options.debug) {
+      pip([
+        particleState.prev.color[0],
+        particleState.next.color[0],
+        trailState.prev.color[0],
+        trailState.next.color[0],
+        particleState.weights.color[0]
+      ])
     }
 
-    window.requestAnimationFrame(this.frame.bind(this))
-    return this
-  }
-  start () {
-    if (!this.running) {
-      this.running = true
-      this.lastFrameTime = window.performance.now()
-      this.init()
-      this.frame()
-    }
-    return this
-  }
-  stop () {
-    this.running = false
-    return this
-  }
-  clearInstance = () => {
-    this.stop()
-    this.igloo.gl.getExtension('WEBGL_lose_context').loseContext()
+    if (this.afterRender) this.afterRender()
   }
 }
 

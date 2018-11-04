@@ -1,9 +1,9 @@
 const path = require('path')
-const webpack = require('webpack')
 
 const isDev = process.env.NODE_ENV === 'development'
 
 let HtmlWebpackPlugin
+
 if (isDev) {
   HtmlWebpackPlugin = require('html-webpack-plugin')
 }
@@ -33,8 +33,14 @@ module.exports = {
       test: /\.(svg|png|jpg|webm|mp4|woff|woff2)$/,
       use: 'file-loader'
     },
-    { test: /\.(glsl|frag|vert)$/, use: 'raw-loader', exclude: /node_modules/ },
-    { test: /\.(glsl|frag|vert)$/, use: 'glslify-loader', exclude: /node_modules/ }]
+    {
+      test: /\.(glsl|vs|fs|vert|frag)$/,
+      exclude: /node_modules/,
+      use: [
+        'raw-loader',
+        'glslify-loader'
+      ]
+    }]
   },
   plugins: [
     HtmlWebpackPlugin && new HtmlWebpackPlugin({
