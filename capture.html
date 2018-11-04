@@ -14,7 +14,7 @@
   <body>
     <div style="height: 100vh; width: 100vw; justify-content: center; display: flex; align-items: center;">
       <div style="display: flex; flex-direction: row;">
-      <canvas height="1080" width="1080"></canvas>
+      <div id="canvasParent" style="position: relative; height:480px; width: 480px;"><canvas></canvas></div>
         <div style="padding: 2em;">
           <h1>Particle Simulation</h1>
           <p>
@@ -47,7 +47,7 @@
 
     const simSettings = {
         stateSize: 10,
-        fps: 60,
+        fps: 24,
         trailLength: 500,
         pauseOnHidden: false
       }
@@ -81,6 +81,7 @@
       capturer.stop()
       capturer.save()
       demo.afterRender = null
+      stopSimulation()
     }
 
     const startSimulation = () => {
@@ -88,7 +89,7 @@
     }
 
     const stopSimulation = () => {
-      demo.clearInstance()
+      demo.stop()
     }
 
     document.getElementById('startSimulation').addEventListener('click', startSimulation)
@@ -101,12 +102,13 @@
 
     window.addEventListener('load', () => {
       canvas = document.querySelector('canvas')
+      let parent = document.getElementById('canvasParent')
       Object.entries(simSettings).forEach(([key, value]) => {
         const item = document.createElement('li')
         item.innerHTML = key + ' : ' + value
         simSettingElement.appendChild(item)
       })
-      demo = new ParticleField(canvas, simSettings)
+      demo = new ParticleField(canvas, { ...simSettings, parent })
     })
     </script>
   </body>

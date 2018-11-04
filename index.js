@@ -1,5 +1,6 @@
 import createShader from 'gl-shader'
-import getContext from 'gl-context'
+import getContext from 'webgl-context'
+import loop from 'canvas-loop'
 import createFbo from 'gl-fbo'
 import triangle from 'a-big-triangle'
 import createVao from 'gl-vao'
@@ -61,12 +62,22 @@ class ParticleField {
       fps: 60,
       trailLength: 10,
       pauseOnHidden: true,
+      debug: false,
       ...options
     }
 
+    
+    this.gl = getContext({
+      canvas,
+      antialias: true
+    })
+    
     this.canvas = canvas
 
-    this.gl = getContext(canvas, this.render.bind(this))
+    const app = loop(canvas, {
+      scale: window.devicePixelRatio,
+      parent: this.options.parent
+    }).on('tick', this.render.bind(this))
 
     this.shaders = {
       particleLogic: createShader(this.gl, triangleVert, particleLogicFrag),
@@ -117,6 +128,10 @@ class ParticleField {
 
     this.advanceTrail = 0
     this.frameCount = 0
+
+    this.start = () => app.start()
+    this.stop = () => app.stop()
+
   }
 
   ping(pong) {
@@ -209,13 +224,17 @@ class ParticleField {
 
     gl.disable(gl.BLEND)
 
-    pip([
-      particleState.prev.color[0],
-      particleState.next.color[0],
-      trailState.prev.color[0],
-      trailState.next.color[0],
-      particleState.weights.color[0]
-    ])
+    if (this.options.debug) {
+      pip([
+        particleState.prev.color[0],
+        particleState.next.color[0],
+        trailState.prev.color[0],
+        trailState.next.color[0],
+        particleState.weights.color[0]
+      ])
+    }
+
+    if (this.afterRender) this.afterRender()
   }
 }
 

@@ -20,8 +20,11 @@
       document.body.appendChild(canvas)
       demo = new ParticleField(canvas, {
         stateSize: 5,
-        trailLength: 500
+        trailLength: 500,
+        debug: true
       })
+
+      demo.start()
     })
     </script>
   </body>
