@@ -8,11 +8,21 @@ import pip from './lib/gl-texture2d-pip'
 import createBuffer from 'gl-buffer'
 import ndarray from 'ndarray'
 
+const generateRandomPosition = () => {
+  const radius = (2 * Math.random()) + 1.0
+  const angle = Math.random() * 360 / Math.PI
+  return [
+    radius * Math.cos(angle),
+    radius * Math.sin(angle)
+  ]
+}
+
 const generatePositionData = size => {
   const particleStateData = new Float32Array(size * size * 4)
   for (var i = 0; i < particleStateData.length;) {
-    particleStateData[i++] = (Math.random() - 0.5) * 2 // position x
-    particleStateData[i++] = (Math.random() - 0.5) * 2 // position y
+    const [x, y] = generateRandomPosition()
+    particleStateData[i++] = x // position x
+    particleStateData[i++] = y // position y
     particleStateData[i++] = 1.0 // velocity x
     particleStateData[i++] = 1.0 // velocity y
   }
@@ -66,12 +76,12 @@ class ParticleField {
       ...options
     }
 
-    
+
     this.gl = getContext({
       canvas,
       antialias: true
     })
-    
+
     this.canvas = canvas
 
     const app = loop(canvas, {
