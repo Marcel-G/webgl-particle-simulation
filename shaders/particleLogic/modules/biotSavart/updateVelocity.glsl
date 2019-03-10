@@ -4,7 +4,12 @@ vec2 calculateBackgroundForce(vec2 currentPosition) {
   vec2 center = vec2(0.0);
   float distanceFromCenter = distance(currentPosition, center) / 2.0;
   float radialForce = (tan(M_PI * distanceFromCenter + M_PI / 2.0) / 2.0) * (distanceFromCenter + 0.3) + 0.2;
-  return normalize(center - currentPosition) * min(radialForce, 2.0);
+  vec2 vectorDifferance = center - currentPosition;
+  if (vectorDifferance == vec2(0, 0)) {
+    return vec2(0, 0);
+  } else {
+    return normalize(vectorDifferance) * min(radialForce, 2.0);
+  }
 }
 
 vec2 calculateBiotForce(vec2 currentPosition) {
@@ -22,14 +27,12 @@ vec2 calculateBiotForce(vec2 currentPosition) {
 
       float pointDistance = abs(distance(currentPosition, referencePosition));
 
-      // if (pointDistance > screenSize.x / 4.0) continue;
-
       if (referencePosition != currentPosition) { // don't apply force to self
         float weight = texture2D(particleWeights, referenceVUv).x;
         for (int x = -1; x <= 1; x++) {
           for (int y = -1; y <= 1; y++) {
-            float dx = referencePosition.x - (currentPosition.x + 2.0 * float(x));
-            float dy = referencePosition.y - (currentPosition.y + 2.0 * float(y));
+            float dx = referencePosition.x - (currentPosition.x + 2.01 * float(x));
+            float dy = referencePosition.y - (currentPosition.y + 2.01 * float(y));
             float r2 = (dx * dx) + (dy * dy);
             float k = (weight * 2.0) / r2;
             nv += k * vec2(-dy, dx);
