@@ -4,7 +4,7 @@ import loop from 'canvas-loop'
 import createFbo from 'gl-fbo'
 import triangle from 'a-big-triangle'
 import createVao from 'gl-vao'
-import pip from './lib/gl-texture2d-pip'
+import pip from 'gl-texture2d-pip'
 import createBuffer from 'gl-buffer'
 import ndarray from 'ndarray'
 
